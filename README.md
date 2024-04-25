@@ -8,6 +8,11 @@ The project contains the following
 - I2C drivers modified for the LSM9DS1 Gyro
 - WIFI drivers for Wifi8 click
 - PWMing code for a fan along with rpm feedback
+## Dependencies
+### arm-none-eabi-gcc
+[](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)
+### Open On-Chip Debugger
+[](https://openocd.org/)
 ## Contributors
 - [Landon Colburn](https://github.com/landoncolburn)
 - [Jacob Janzen](https://github.com/JacobJanzen)
