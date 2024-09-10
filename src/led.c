@@ -16,10 +16,10 @@ void portLED(char pad, int num){
 
     PORT_REGS->GROUP[group].PORT_PINCFG[num] |= PORT_PINCFG_PMUXEN_Msk;
         if(num%2== 0){
-            PORT_REGS->GROU[group].PORT_PMUX[num/2] |= PORT_PMUX_PMUXE_F;
+            PORT_REGS->GROUP[group].PORT_PMUX[num/2] |= PORT_PMUX_PMUXE_F;
         }
         else{
-            PORT_REGS->GROU[group].PORT_PMUX[num/2] |= PORT_PMUX_PMUXO_F;
+            PORT_REGS->GROUP[group].PORT_PMUX[num/2] |= PORT_PMUX_PMUXO_F;
         }
 
 }
