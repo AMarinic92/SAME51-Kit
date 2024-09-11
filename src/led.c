@@ -3,23 +3,23 @@
 #include "same51j20a.h"
 
 void clkLED(){
+    GCLK_REGS->GCLK_GENCTRL[3] = GCLK_GENCTRL_DIV(60) | GCLK_GENCTRL_SRC_DFLL | GCLK_GENCTRL_GENEN_Msk;
 
+    GCLK_REGS->GCLK_PCHCTRL[TCC2_GCLK_ID] = GCLK_PCHCTRL_GEN_GCLK3 | GCLK_PCHCTRL_CHEN_Msk;
+    while((GCLK_REGS->GCLK_PCHCTRL[TCC2_GCLK_ID] & GCLK_PCHCTRL_CHEN_Msk) != GCLK_PCHCTRL_CHEN_Msk){
 
+        //WAIT FOR SYNCS
+    }//while
+
+    MCLK_REGS->MCLK_APBCMASK |= MCLK_APBCMASK_TCC2_Msk;
 }
 
-void portLED(char pad, int num){
-    int group = 1;
-    if( (pad == 'a') || (pad == 'A')){
-        group = 0;
-    }
+void portLED(){
 
 
-    PORT_REGS->GROUP[group].PORT_PINCFG[num] |= PORT_PINCFG_PMUXEN_Msk;
-        if(num%2== 0){
-            PORT_REGS->GROUP[group].PORT_PMUX[num/2] |= PORT_PMUX_PMUXE_F;
-        }
-        else{
-            PORT_REGS->GROUP[group].PORT_PMUX[num/2] |= PORT_PMUX_PMUXO_F;
-        }
+    PORT_REGS->GROUP[0].PORT_PINCFG[16] |= PORT_PINCFG_PMUXEN_Msk;
+    PORT_REGS->GROUP[0].PORT_PMUX[8] |= PORT_PMUX_PMUXE_F;
+ 
+
 
 }
