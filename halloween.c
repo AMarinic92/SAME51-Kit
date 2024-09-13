@@ -208,19 +208,18 @@ void initAllPorts()
 {
     // LED output
     PORT_REGS->GROUP[0].PORT_DIRSET = PORT_PA14;
+    PORT_REGS->GROUP[1].PORT_DIRSET = PORT_PB06;
+    PORT_REGS->GROUP[1].PORT_DIRSET = PORT_PB07;
     //PORT_REGS->GROUP[0].PORT_OUTSET = PORT_PA14;
 
-    port15Init();  // init button ports
-    sercom2Init(); // init sercom2 -> i2c ports
-    portUART(SERCOM0_REGS);    // init UART ports
+\
 
 } // initAllPorts
 
 void initAllClks()
 {
     clkButton();
-    clkI2C();
-    clkUART(SERCOM0_REGS);
+
 
 } // initAllClks
 
@@ -229,14 +228,8 @@ void initAll()
     heartInit();
     initAllPorts();
     initAllClks();
-    initI2C();
     initButton();
-    initUART(SERCOM0_REGS);
-    fanInit();
-    rpmInit();
 
-    // init gyro stuff
-    // accelOnlyMode();
 }
 
 
@@ -285,7 +278,9 @@ int main(void)
 #endif
 
     PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
-
+    //Relay ports
+    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
     // sleep until we have an interrupt
 
 
