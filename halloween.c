@@ -11,10 +11,10 @@
 // setup our heartbeat to be 1ms: we overflow at 1ms intervals with a 120MHz
 // clock uses the SysTicks unit so that we get reliable debugging (timer stops
 // on breakpoints)
-#define MS_TICKS 2000UL
-// #define MS_TICKS 120000UL
 //  number of millisecond between LED flashes
 #define LED_FLASH_MS  1000UL
+#define MS_PER_SECOND 1000UL
+#define START_MS      (10*MS_PER_SECOND)
 #define GYRO_CHECK_MS 200UL
 #define COMMAND_CHECK_MS 1000UL
 
@@ -25,7 +25,92 @@ volatile uint32_t secCount = 0;
 static unsigned char i2c_rx_buff[READ_BUF_SIZE];
 
 uint16_t xl_xyz_buff[3];
+
 uint16_t gyro_xyz_buff[3];
+
+volatile uint32_t actTimer = 0;
+void act_off();
+void act_violent();
+void act_drop();
+void act_reset();
+
+void (*actuator)() = &act_off;
+
+void act_off(){
+    actTimer = 0;
+
+}
+
+void act_violent(){
+
+    actTimer = get_ticks()+MS_PER_SECOND;
+
+    //toggle Normally Open relay for UP actuator 
+    PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+    while(get_ticks()<actTimer){
+        //wait
+    }
+    int count = 0;
+    while(count != 3){
+        //Toggle DOWN and UP for half a second (DOWN)
+        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
+        PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+
+        actTimer = get_ticks()+(MS_PER_SECOND/2);
+
+        while(get_ticks()<actTimer){
+            //wait
+        }
+        //Toggle DOWN and UP for half a second (UP)
+        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
+        PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+
+        actTimer = get_ticks()+(MS_PER_SECOND/2);
+
+        while(get_ticks()<actTimer){
+            //wait
+        }
+        count ++;
+    }
+    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+
+    actuator = &act_reset;
+
+
+}
+
+
+void act_drop(){
+
+    actTimer = get_ticks()+MS_PER_SECOND;
+
+    //toggle Normally Open relay for UP actuator 
+    PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+    while(get_ticks()<actTimer){
+        //wait
+    }
+    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+    actuator = &act_reset;
+}
+
+void act_reset(){
+
+    actTimer = get_ticks()+MS_PER_SECOND;
+
+    //toggle Normally Open relay for DOWN actuator 
+    PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
+    while(get_ticks()<actTimer){
+        //wait
+    }
+    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
+    actuator = &act_off;
+
+}
 
 void flash();
 void on();
@@ -212,7 +297,7 @@ void initAllPorts()
     PORT_REGS->GROUP[0].PORT_DIRSET = PORT_PA14;
     PORT_REGS->GROUP[1].PORT_DIRSET = PORT_PB06;
     PORT_REGS->GROUP[1].PORT_DIRSET = PORT_PB07;
-    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+    //PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
     //PORT_REGS->GROUP[0].PORT_OUTSET = PORT_PA14;
 
 \
@@ -282,16 +367,23 @@ int main(void)
 
     PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
     //Relay ports
-    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
-    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+
     // sleep until we have an interrupt
 
 
 
     while (1) {
         __WFI();
+
+        actuator();
         if ((get_ticks() % LED_FLASH_MS) == 0) {
-            led();
+            //led();
+
+        }
+        if((get_ticks() % START_MS == 0)){
+            
+            actuator = &act_violent;
+            
 
         }
 
