@@ -1,11 +1,8 @@
 #include "sam.h"
-
 #include "button.h"
 #include "dcc_stdio.h"
 #include "heart.h"
-#include "i2c.h"
-#include "uart.h"
-#include "fan.h"
+
 
 #define DEBUG_WAIT 10000000UL
 // setup our heartbeat to be 1ms: we overflow at 1ms intervals with a 120MHz
@@ -14,25 +11,24 @@
 //  number of millisecond between LED flashes
 #define LED_FLASH_MS  1000UL
 #define MS_PER_SECOND 1000UL
+#define MS_SLAM_LONG 500UL
+#define MS_SLAM_SHORT 250UL
 #define START_MS      (10*MS_PER_SECOND)
-#define GYRO_CHECK_MS 200UL
-#define COMMAND_CHECK_MS 1000UL
-
+#define SLAM_MIN 3
+#define SLAM_MAX 5
+#define ACT_STATES 2
 
 // NOTE: this overflows every ~50 days, so I'm not going to care here...
 // volatile uint32_t msCount = 0;
 volatile uint32_t secCount = 0;
-static unsigned char i2c_rx_buff[READ_BUF_SIZE];
-
-uint16_t xl_xyz_buff[3];
-
-uint16_t gyro_xyz_buff[3];
 
 volatile uint32_t actTimer = 0;
+volatile uint8_t act_index = 0;
 void act_off();
 void act_violent();
 void act_drop();
 void act_reset();
+void (*actProgs[ACT_STATES])() = {&act_drop,&act_violent};
 
 void (*actuator)() = &act_off;
 
@@ -42,7 +38,8 @@ void act_off(){
 }
 
 void act_violent(){
-
+    int count = 0;
+    int timeMod = 0;
     actTimer = get_ticks()+MS_PER_SECOND;
 
     //toggle Normally Open relay for UP actuator 
@@ -51,14 +48,21 @@ void act_violent(){
     while(get_ticks()<actTimer){
         //wait
     }
-    int count = 0;
-    while(count != 3){
+    
+    while(count != SLAM_MAX){
+
+        if(count%2 ==0){
+            timeMod = MS_SLAM_LONG;
+        }
+        else{
+            timeMod = MS_SLAM_SHORT;
+        }
         //Toggle DOWN and UP for half a second (DOWN)
         PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
         PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
         PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
 
-        actTimer = get_ticks()+(MS_PER_SECOND/2);
+        actTimer = get_ticks()+(timeMod);
 
         while(get_ticks()<actTimer){
             //wait
@@ -68,7 +72,7 @@ void act_violent(){
         PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
         PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
 
-        actTimer = get_ticks()+(MS_PER_SECOND/2);
+        actTimer = get_ticks()+(timeMod);
 
         while(get_ticks()<actTimer){
             //wait
@@ -112,184 +116,7 @@ void act_reset(){
 
 }
 
-void flash();
-void on();
-void off();
 
-void (*led)() = &flash;
-
-void flash(){
-
-    
-
-        PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
-        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
-        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
-        updateOutput(0x11);
-    
-
-}
-
-void off(){
-
-    
-
-        PORT_REGS->GROUP[0].PORT_OUTSET = PORT_PA14;
-        updateOutput(0x00);
-    
-
-}
-
-void on(){
-
-    
-
-        PORT_REGS->GROUP[0].PORT_OUTCLR = PORT_PA14;
-        updateOutput(0x7F);
-    
-
-}
-
-
-void sampleG();
-void sampleX();
-void (*sample)() = &sampleG;
-
-void sampleG(){
-
-    if ((get_ticks() % GYRO_CHECK_MS) == 0) {
-
-        sampleGyro(gyro_xyz_buff);
-        
-    }
-
-    sample = &sampleX;
-
-}
-
-void sampleX(){
-
-        if ((get_ticks() % GYRO_CHECK_MS) == 0) {
-
-        sampleXL(xl_xyz_buff);
-        
-    }
-    sample = &sampleG;
-}
-
-
-//decodes our message
-void decode_msg(uint8_t *msg){
-    uint8_t tmp[2];
-    if(msg[0] == (uint8_t)('g')){
-        //gyro command block
-        if(msg[1] == (uint8_t)('x')){
-            //tx gyro_xyz_buff[0]
-            tmp[0] = (uint8_t)((0XFF00&gyro_xyz_buff[0])>>8);
-            tmp[1] = (uint8_t)(0X00FF&gyro_xyz_buff[0]);
-            txUARTArr(SERCOM0_REGS, tmp, 2);
-        }
-        else if(msg[1] == (uint8_t)('y')){
-            //tx gyro_xyz_buff[1]
-            tmp[0] = (uint8_t)((0XFF00&gyro_xyz_buff[1])>>8);
-            tmp[1] = (uint8_t)(0X00FF&gyro_xyz_buff[1]);
-            txUARTArr(SERCOM0_REGS, tmp, 2);
-        }
-        else if(msg[1] == (uint8_t)('z')){
-            //tx gyro_xyz_buff[2]
-            tmp[0] = (uint8_t)((0XFF00&gyro_xyz_buff[2])>>8);
-            tmp[1] = (uint8_t)(0X00FF&gyro_xyz_buff[2]);
-            txUARTArr(SERCOM0_REGS, tmp, 2);
-        }
-
-    }
-    else if(msg[0] == (uint8_t)('x')){
-        //Accelerometer command block
-        txMode(SERCOM0_REGS);
-        if(msg[1] == (uint8_t)('x')){
-            //tx xl_xyz_buff[0]
-            tmp[0] = (uint8_t)((0XFF00&xl_xyz_buff[0])>>8);
-            tmp[1] = (uint8_t)(0X00FF&xl_xyz_buff[0]);
-            txUARTArr(SERCOM0_REGS, tmp, 2);
-        }
-        else if(msg[1] == (uint8_t)('y')){
-            //tx xl_xyz_buff[1]
-            tmp[0] = (uint8_t)((0XFF00&xl_xyz_buff[1])>>8);
-            tmp[1] = (uint8_t)(0X00FF&xl_xyz_buff[1]);
-            txUARTArr(SERCOM0_REGS, tmp, 2);
-        }
-        else if(msg[1] == (uint8_t)('z')){
-            //tx xl_xyz_buff[2]
-            tmp[0] = (uint8_t)((0XFF00&xl_xyz_buff[2])>>8);
-            tmp[1] = (uint8_t)(0X00FF&xl_xyz_buff[2]);
-            txUARTArr(SERCOM0_REGS, tmp, 2);
-        }
-        rxMode(SERCOM0_REGS);
-    }
-    else if(msg[0] == (uint8_t)('f')){
-        //Fan command block
-        updateOutput(msg[1]);
-
-    }
-    else if(msg[0] == (uint8_t)('l')){
-        //Led command block
-
-        if(msg[1] == (uint8_t)('0')){
-            led = &off;
-        }
-        else if(msg[1] == (uint8_t)('1')){
-            led = &on;
-        }
-        else if(msg[1] == (uint8_t)('2')){
-            led = &flash;
-        }
-
-    }
-
-
-
-}
-
-static uint8_t extra         = 0;
-static int     extra_is_used = 0;
-
-//get our uart message and decode them to figure out what to do
-void commandHandler(){
-            int uart_len = 1;
-                while (uart_len != 0) {
-                    uint8_t rx_data[2];
-
-                    if (extra_is_used) {
-                        // handle second byte of pair if first was unused
-                        rx_data[0] = extra;
-                        uart_len   = rxUART(SERCOM0_REGS, &extra, 1);
-                        if (uart_len > 0) {
-                            rx_data[1]    = extra;
-                            extra_is_used = 0;
-                            decode_msg(rx_data);
-                            #ifndef NDEBUG
-                                dbg_write_u8(rx_data,2);
-                            #endif
-
-                        }
-                    } else {
-                        uart_len = rxUART(SERCOM0_REGS, rx_data, 2);
-
-                        if (uart_len == 2) {
-                            decode_msg(rx_data);
-                            #ifndef NDEBUG
-                                dbg_write_u8(rx_data,2);
-                            #endif
-                        } else {
-                            // handle byte with a missing second byte
-                            extra         = rx_data[0];
-                            extra_is_used = 1;
-                        }
-                    }
-                }
- 
-            
-}
 
 void initAllPorts()
 {
@@ -382,8 +209,8 @@ int main(void)
         }
         if((get_ticks() % START_MS == 0)){
             
-            actuator = &act_violent;
-            
+            actuator = actProgs[act_index];
+            act_index = (act_index+1)%ACT_STATES;
 
         }
 
