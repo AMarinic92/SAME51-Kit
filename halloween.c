@@ -1,7 +1,9 @@
-#include "sam.h"
+#include <sam.h>
 #include "button.h"
 #include "dcc_stdio.h"
 #include "heart.h"
+#include "trng.h"
+#include <stdbool.h>
 
 
 #define DEBUG_WAIT 10000000UL
@@ -13,7 +15,10 @@
 #define MS_PER_SECOND 1000UL
 #define MS_SLAM_LONG 500UL
 #define MS_SLAM_SHORT 250UL
-#define START_MS      (10*MS_PER_SECOND)
+#define MS_SLOW_UP 2UL
+#define MS_SLOW_ELSAPSE (START_MS/2)
+#define MS_SLOW_WAIT (MS_SLOW_UP*200)
+#define START_MS      (MS_PER_SECOND*300)
 #define SLAM_MIN 3
 #define SLAM_MAX 5
 #define ACT_STATES 2
@@ -24,13 +29,19 @@ volatile uint32_t secCount = 0;
 
 volatile uint32_t actTimer = 0;
 volatile uint8_t act_index = 0;
+volatile bool is_up = false;
+volatile bool is_down = false;
 void act_off();
+void act_up();
+void act_down();
+void act_up_time(uint32_t time);
 void act_violent();
-void act_drop();
 void act_reset();
-void (*actProgs[ACT_STATES])() = {&act_drop,&act_violent};
+void act_quick_up();
+void act_slow_up();
+void (*actProgs[ACT_STATES])() = {&act_quick_up,&act_violent};
 
-void (*actuator)() = &act_off;
+void (*actuator)() = &act_reset;
 
 void act_off(){
     actTimer = 0;
@@ -43,8 +54,7 @@ void act_violent(){
     actTimer = get_ticks()+MS_PER_SECOND;
 
     //toggle Normally Open relay for UP actuator 
-    PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
-    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+    act_up();
     while(get_ticks()<actTimer){
         //wait
     }
@@ -58,9 +68,8 @@ void act_violent(){
             timeMod = MS_SLAM_SHORT;
         }
         //Toggle DOWN and UP for half a second (DOWN)
-        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
-        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
-        PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+        act_up();
+        act_down();
 
         actTimer = get_ticks()+(timeMod);
 
@@ -68,9 +77,8 @@ void act_violent(){
             //wait
         }
         //Toggle DOWN and UP for half a second (UP)
-        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
-        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
-        PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+        act_down();
+        act_up();
 
         actTimer = get_ticks()+(timeMod);
 
@@ -79,26 +87,82 @@ void act_violent(){
         }
         count ++;
     }
-    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+
+    act_up();
 
     actuator = &act_reset;
 
 
 }
 
+//I currently don't want both to run at once
+//toggles the actuator up
+void act_up(){
 
-void act_drop(){
-
-    actTimer = get_ticks()+MS_PER_SECOND;
-
+    if(!is_down){
     //toggle Normally Open relay for UP actuator 
-    PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
-    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+        PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+    is_up = !is_up;
+    }
+}
+
+//toggles the actuator down
+void act_down(){
+
+    if(!is_up){
+        PORT_REGS->GROUP[0].PORT_OUTSET = PORT_PA14;
+        PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
+        is_down = !is_down;
+    }
+}
+void act_up_time(uint32_t time){
+    
+
+    volatile uint32_t elapse = get_ticks()+time;
+ 
+    act_up();
+    while(get_ticks()<elapse) {
+        //wait
+    }
+    //toggle act up to off
+    act_up();
+    
+
+}
+
+void act_slow_up(){
+    volatile uint32_t nextWait = 0;
+    volatile uint32_t nextUp = 0;
+    actTimer = get_ticks()+MS_SLOW_ELSAPSE;
+    while (get_ticks()<actTimer){
+        nextUp = get_ticks()+MS_SLOW_UP;
+        act_up();
+        while (get_ticks()<nextUp){
+            /* code */
+        }
+        nextWait = get_ticks()+MS_SLOW_WAIT;
+        while(get_ticks()<nextWait){
+
+
+        }
+        
+    }
+    
+    
+    actuator = &act_reset;
+}
+
+void act_quick_up(){
+    actTimer = get_ticks()+MS_PER_SECOND;
+    act_up();
     while(get_ticks()<actTimer){
         //wait
     }
-    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
+    act_up();
+
     actuator = &act_reset;
+
 }
 
 void act_reset(){
@@ -106,12 +170,11 @@ void act_reset(){
     actTimer = get_ticks()+MS_PER_SECOND;
 
     //toggle Normally Open relay for DOWN actuator 
-    PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
-    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
+    act_down();
     while(get_ticks()<actTimer){
         //wait
     }
-    PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB07;
+    act_down();
     actuator = &act_off;
 
 }
@@ -125,7 +188,7 @@ void initAllPorts()
     PORT_REGS->GROUP[1].PORT_DIRSET = PORT_PB06;
     PORT_REGS->GROUP[1].PORT_DIRSET = PORT_PB07;
     //PORT_REGS->GROUP[1].PORT_OUTTGL = PORT_PB06;
-    //PORT_REGS->GROUP[0].PORT_OUTSET = PORT_PA14;
+    PORT_REGS->GROUP[0].PORT_OUTSET = PORT_PA14;
 
 \
 
@@ -152,7 +215,7 @@ void initAll()
 // ISR for  external interrupt 15, add processing code as required...
 void EIC_EXTINT_15_Handler()
 {
-    PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+    //PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
     // clear the interrupt! and go to the next operating mode
     EIC_REGS->EIC_INTFLAG |= EXTINT15_MASK;
 }
@@ -183,7 +246,7 @@ int main(void)
     PM_REGS->PM_SLEEPCFG |= PM_SLEEPCFG_SLEEPMODE_IDLE;
 
     initAll();
-
+    turnOnTRNG();
     // we want interrupts!
     __enable_irq();
 
@@ -192,26 +255,30 @@ int main(void)
     dbg_write_str("~~~DEBUG ENABLED~~~\n");
 #endif
 
-    PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+    //PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
     //Relay ports
 
     // sleep until we have an interrupt
 
 
 
+    
+    
+    uint32_t rndcount = 0;
+    uint32_t randNum = interPosRndNum(2,5);
     while (1) {
         __WFI();
-
         actuator();
-        if ((get_ticks() % LED_FLASH_MS) == 0) {
-            //led();
 
-        }
+    /*     if (((get_ticks() % (LED_FLASH_MS)) == 0)&& rndcount < randNum) {
+            PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
+            rndcount ++;
+
+        } */
+        
         if((get_ticks() % START_MS == 0)){
-            
             actuator = actProgs[act_index];
-            act_index = (act_index+1)%ACT_STATES;
-
+            act_index = (act_index+1)%ACT_STATES;       
         }
 
 
