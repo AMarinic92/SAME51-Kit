@@ -19,10 +19,14 @@
 #define MS_SLOW_ELSAPSE (START_MS/2)
 #define MS_SLOW_WAIT (MS_SLOW_UP*200)
 #define START_MS      (MS_PER_SECOND*300)
+#define MAX_DROP_MS MS_PER_SECOND*60
+#define MIN_DROP_MS MS_PER_SECOND*2
 #define SLAM_MIN 3
 #define SLAM_MAX 5
-#define ACT_STATES 2
+#define ACT_STATES 3
 
+
+uint32_t interpolateNum(uint32_t min, uint32_t max, uint32_t number);
 // NOTE: this overflows every ~50 days, so I'm not going to care here...
 // volatile uint32_t msCount = 0;
 volatile uint32_t secCount = 0;
@@ -40,7 +44,8 @@ void act_violent();
 void act_reset();
 void act_quick_up();
 void act_slow_up();
-void (*actProgs[ACT_STATES])() = {&act_quick_up,&act_violent};
+void act_random_drop();
+void (*actProgs[ACT_STATES])() = {&act_random_drop,&act_quick_up,&act_violent};
 
 void (*actuator)() = &act_reset;
 
@@ -94,6 +99,20 @@ void act_violent(){
     actuator = &act_reset;
 
 
+}
+
+void act_random_drop(){
+    getRndNum(&randomNumber);
+    act_up();
+
+    actTimer = get_ticks()+interpolateNum(MIN_DROP_MS,MAX_DROP_MS,randomNumber);
+    while (get_ticks()<actTimer)
+    {
+        /* code */
+    }
+    act_up();
+    actuator = &act_reset;
+    
 }
 
 //I currently don't want both to run at once
@@ -285,17 +304,17 @@ int main(void)
         __WFI();
         actuator();
 
-        if (((get_ticks() % (LED_FLASH_MS)) == 0) && rndcount < randomNumber) {
+/*         if (((get_ticks() % (LED_FLASH_MS)) == 0) && rndcount < randomNumber) {
             PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
             rndcount ++;
 
-        } 
-/*         
+        }  */
+        
         if((get_ticks() % START_MS == 0)){
             actuator = actProgs[act_index];
             act_index = (act_index+1)%ACT_STATES;       
         }
- */
+
 
 
 
