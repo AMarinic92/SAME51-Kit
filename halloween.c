@@ -2,7 +2,7 @@
 #include "button.h"
 #include "dcc_stdio.h"
 #include "heart.h"
-#include "trng.h"
+#include "rng.h"
 #include <stdbool.h>
 
 
@@ -31,6 +31,7 @@ volatile uint32_t actTimer = 0;
 volatile uint8_t act_index = 0;
 volatile bool is_up = false;
 volatile bool is_down = false;
+volatile uint32_t randomNumber = 0;
 void act_off();
 void act_up();
 void act_down();
@@ -220,6 +221,17 @@ void EIC_EXTINT_15_Handler()
     EIC_REGS->EIC_INTFLAG |= EXTINT15_MASK;
 }
 
+uint32_t interpolateNum(uint32_t min, uint32_t max, uint32_t number){
+    float out = (float)min;
+    float adjust = (float)(max-min);
+    adjust = adjust/(float)INT32_MAX;
+    adjust = adjust*(float)number;
+    out = out + adjust;
+    return (uint32_t)out;
+
+
+}
+
 int main(void)
 {
 #ifndef NDEBUG
@@ -265,22 +277,25 @@ int main(void)
     
     
     uint32_t rndcount = 0;
-    uint32_t randNum = interPosRndNum(2,5);
+    getRndNum(&randomNumber);
+    //randomNumber = randomNumber&0x7;
+    //randomNumber = randomNumber&0x3F;
+    randomNumber = interpolateNum(2,6,randomNumber);
     while (1) {
         __WFI();
         actuator();
 
-    /*     if (((get_ticks() % (LED_FLASH_MS)) == 0)&& rndcount < randNum) {
+        if (((get_ticks() % (LED_FLASH_MS)) == 0) && rndcount < randomNumber) {
             PORT_REGS->GROUP[0].PORT_OUTTGL = PORT_PA14;
             rndcount ++;
 
-        } */
-        
+        } 
+/*         
         if((get_ticks() % START_MS == 0)){
             actuator = actProgs[act_index];
             act_index = (act_index+1)%ACT_STATES;       
         }
-
+ */
 
 
 
