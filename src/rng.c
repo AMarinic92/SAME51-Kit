@@ -35,7 +35,7 @@ void getRndNum(uint32_t* rndNum){
     rndNum[0] = rand;
 }
 volatile uint32_t interPosRndNum(uint32_t min, uint32_t max, uint32_t * buffer){
-    volatile uint32_t rand = 0;
+    uint32_t rand = 0;
     getRndNum(&rand);
     uint32_t adjust = (rand)/((min-max)/UINT32_MAX);
     *buffer = (uint32_t)(min+(adjust));
