@@ -6,4 +6,4 @@
 .DS_Store
 build/*
 RealTimeNetworking.code-workspace
-.vscode
+node_modules
