@@ -48,7 +48,7 @@ void act_reset();
 void act_quick_up();
 void act_slow_up();
 void act_random_drop();
-void (*actProgs[ACT_STATES])() = {&act_random_drop, &act_quick_up, &act_violent};
+void (*actProgs[ACT_STATES])() = { &act_random_drop, &act_quick_up, &act_violent };
 
 void (*actuator)() = &act_reset;
 
