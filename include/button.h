@@ -1,4 +1,4 @@
-#include "sam.h"
+#include "same51j20a.h"
 
 #if !defined(BUTTON)
 #define BUTTON

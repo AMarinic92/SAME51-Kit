@@ -51,8 +51,8 @@ void fanInit()
 
   // have to enable the peripheral clocks I need via the generic and main clocks
   // see page 156 of data sheet for GCLK array offsets
-  GCLK_REGS->GCLK_PCHCTRL[9] = GCLK_PCHCTRL_GEN(4) | GCLK_PCHCTRL_CHEN_Msk;
-  while ((GCLK_REGS->GCLK_PCHCTRL[9] & GCLK_PCHCTRL_CHEN_Msk) != GCLK_PCHCTRL_CHEN_Msk)
+  GCLK_REGS->GCLK_PCHCTRL[TC1_GCLK_ID] = GCLK_PCHCTRL_GEN(4) | GCLK_PCHCTRL_CHEN_Msk;
+  while ((GCLK_REGS->GCLK_PCHCTRL[TC1_GCLK_ID] & GCLK_PCHCTRL_CHEN_Msk) != GCLK_PCHCTRL_CHEN_Msk)
     ;/* Wait for synchronization */
 
   MCLK_REGS->MCLK_APBAMASK |= MCLK_APBAMASK_TC1_Msk;

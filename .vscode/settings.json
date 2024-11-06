@@ -3,6 +3,7 @@
         "sam.h": "c",
         "button.h": "c",
         "same51j20a.h": "c",
-        "heart.h": "c"
+        "heart.h": "c",
+        "dcc_stdio.h": "c"
     }
 }
