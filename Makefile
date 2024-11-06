@@ -16,7 +16,7 @@ SRCDIR=src
 # TARGET-CAN-RS485=$(BUILDDIR)/CAN-RS485.elf
 # TARGET-SENSOR=$(BUILDDIR)/sensor.elf
 # TARGET-WIFI-CAN=$(BUILDDIR)/WIFI-CAN.elf
-TARGET-HALLOWEEN=$(BUILDDIR)/halloween.elf
+TARGET-KYBER=$(BUILDDIR)/kyber.elf
 
 INCLUDE_PATHS=-I$(PACK)/include -ICore/include -Iinclude
 ASFLAGS=-mthumb -mcpu=$(CPU) -D__$(DEVICE_UPPER)__ -O1 -ffunction-sections -Wall
@@ -28,8 +28,8 @@ SYS_OBJS=$(PACK)/gcc/system_$(DEVICE).o $(PACK)/gcc/gcc/startup_$(DEVICE).o
 SRCS=$(wildcard $(SRCDIR)/*.c)
 OBJS=$(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(SRCS))
 
-# all: $(TARGET-SENSOR) $(TARGET-CAN-RS485) $(TARGET-WIFI-CAN) $(TARGET-HALLOWEEN)
-all: $(TARGET-HALLOWEEN)
+# all: $(TARGET-SENSOR) $(TARGET-CAN-RS485) $(TARGET-WIFI-CAN) $(TARGET-KYBER)
+all: $(TARGET-KYBER)
 
 debug: CFLAGS += -g
 debug: clean all
@@ -55,7 +55,7 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 # 	mkdir -p build
 # 	$(CC) $(CFLAGS) $(INCLUDE_PATHS) $^ -o $@
 
-$(BUILDDIR)/halloween.o: halloween.c
+$(BUILDDIR)/kyber.o: kyber.c
 	mkdir -p build
 	$(CC) $(CFLAGS) $(INCLUDE_PATHS) $^ -o $@
 
@@ -82,7 +82,7 @@ $(BUILDDIR)/halloween.o: halloween.c
 # 	arm-none-eabi-objdump -h -S $@ > $(patsubst %.elf,%.lss,$@)
 # 	arm-none-eabi-size $@
 
-$(TARGET-HALLOWEEN): $(OBJS) $(SYS_OBJS) build/halloween.o
+$(TARGET-KYBER): $(OBJS) $(SYS_OBJS) build/kyber.o
 	mkdir -p build
 	$(CC) -o $@ $(LDFLAGS) $^
 	arm-none-eabi-objcopy -O ihex -R .eeprom -R .fuse -R .lock -R .signature  $@ $(patsubst %.elf,%.hex,$@)
@@ -102,5 +102,5 @@ clean:
 # WIFI-CAN-install: $(TARGET-WIFI-CAN)
 # 	openocd -f board/$(BOARD).cfg -c "program $< verify reset exit"
 
-halloween-install: $(TARGET-HALLOWEEN)
+kyber-install: $(TARGET-KYBER)
 	openocd -f board/$(BOARD).cfg -c "program $< verify reset exit"

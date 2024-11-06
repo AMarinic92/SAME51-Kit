@@ -8,7 +8,7 @@
         "name": "openOCD",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceFolder}/build/halloween.elf",
+        "program": "${workspaceFolder}/build/kyber.elf",
         "cwd": "${workspaceFolder}",
         "MIMode": "gdb",
         "targetArchitecture": "arm",
@@ -17,7 +17,7 @@
         "miDebuggerPath": "arm-none-eabi-gdb",
         "setupCommands": [
           {
-            "text": "file ${workspaceFolder}/build/halloween.elf",
+            "text": "file ${workspaceFolder}/build/kyber.elf",
             "ignoreFailures": false
           },
           {
